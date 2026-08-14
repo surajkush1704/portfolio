@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+
+export const TYPEWRITER_SPEED_MS = 33  // 30 chars per second
 
 export type DialogueState = 'narration' | 'hint' | 'response' | 'idle'
 
@@ -11,7 +13,8 @@ interface DialogueBoxProps {
   hintText?: string
   typewriterSpeed?: number
   onTypeComplete?: () => void
-  variant?: 'realm0' | 'realm1'
+  onSkip?: () => void
+  variant?: 'realm0' | 'realm1' | 'realm2'
 }
 
 function CornerBrackets() {
@@ -29,8 +32,9 @@ export function DialogueBox({
   state,
   visible,
   hintText = '[ TOUCH THE MONOLITH ]',
-  typewriterSpeed = 28,
+  typewriterSpeed = TYPEWRITER_SPEED_MS,
   onTypeComplete,
+  onSkip,
   variant = 'realm1',
 }: DialogueBoxProps) {
   const [displayed, setDisplayed] = useState('')
@@ -38,6 +42,34 @@ export function DialogueBox({
   const indexRef = useRef(0)
   const timerRef = useRef<number | undefined>(undefined)
   const completedRef = useRef(false)
+  const fullTextRef = useRef('')
+
+  const handleSkip = useCallback(() => {
+    if (typing) {
+      window.clearInterval(timerRef.current)
+      setDisplayed(fullTextRef.current)
+      setTyping(false)
+      if (!completedRef.current) {
+        completedRef.current = true
+        onTypeComplete?.()
+      }
+    } else {
+      onSkip?.()
+    }
+  }, [typing, onTypeComplete, onSkip])
+
+  useEffect(() => {
+    if (!visible) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        handleSkip()
+      }
+    }
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
+  }, [visible, handleSkip])
 
   useEffect(() => {
     window.clearInterval(timerRef.current)
@@ -48,6 +80,7 @@ export function DialogueBox({
 
     if (!visible || state === 'idle' || state === 'hint') return
 
+    fullTextRef.current = text
     setTyping(true)
     timerRef.current = window.setInterval(() => {
       indexRef.current += 1
@@ -118,11 +151,11 @@ export function DialogueBox({
           position: absolute;
           z-index: 30;
           padding: 20px 24px;
-          background: rgba(5, 0, 12, 0.88);
-          border: 1px solid rgba(212,175,55,0.25);
-          box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 0 30px rgba(124,58,237,0.08);
-          backdrop-filter: blur(8px);
-          text-shadow: 0 2px 8px #000;
+          background: rgba(5, 0, 12, 0.92);
+          border: 1px solid rgba(212,175,55,0.45);
+          box-shadow: 0 0 40px rgba(212,175,55,0.15), 0 0 80px rgba(124,58,237,0.1), inset 0 0 40px rgba(0,0,0,0.6);
+          backdrop-filter: blur(12px);
+          text-shadow: 0 2px 10px rgba(0,0,0,0.9);
         }
         .dialogue-realm1 {
           bottom: 80px;
@@ -136,6 +169,11 @@ export function DialogueBox({
           min-height: 158px;
           border-left: 2px solid rgba(212,175,55,0.85);
           background: linear-gradient(90deg, rgba(4,0,11,0.86), rgba(4,0,11,0.25));
+        }
+        .dialogue-realm2 {
+          bottom: 80px;
+          left: 32px;
+          max-width: 580px;
         }
         .corner {
           position: absolute;
@@ -155,7 +193,7 @@ export function DialogueBox({
           margin-bottom: 14px;
           color: #D4AF37;
           font-family: 'Cinzel', serif;
-          font-size: clamp(11px, 1vw, 13px);
+          font-size: 11px;
           letter-spacing: 0.15em;
           text-transform: uppercase;
         }
@@ -167,11 +205,11 @@ export function DialogueBox({
         }
         .dialogue-box p {
           margin: 0;
-          font-family: 'UnifrakturCook', serif;
-          font-size: clamp(15px, 1.4vw, 20px);
-          line-height: 1.65;
-          letter-spacing: 0.03em;
-          color: #eee4ee;
+          font-family: 'MedievalSharp', 'Cinzel Decorative', serif !important;
+          font-size: 13px !important;
+          letter-spacing: 0.04em !important;
+          line-height: 1.65 !important;
+          color: #f3e9f3 !important;
         }
         .dialogue-hint {
           font-family: 'Cinzel', serif !important;
@@ -198,14 +236,14 @@ export function DialogueBox({
           50% { opacity: 0; }
         }
         @media (max-width: 768px) {
-          .dialogue-realm1 {
+          .dialogue-realm1, .dialogue-realm2 {
             left: 8px;
             right: 8px;
             max-width: none;
             bottom: 72px;
             padding: 14px 16px;
           }
-          .dialogue-box p { font-size: 14px; }
+          .dialogue-box p { font-size: 13px; }
         }
       `}</style>
     </motion.section>

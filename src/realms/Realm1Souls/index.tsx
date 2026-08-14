@@ -385,6 +385,7 @@ export default function Realm1Souls({ onNext, onPrev: _onPrev, initialFinished }
         state={dialogueState}
         visible={dialogueVisible}
         onTypeComplete={dialogueCompleteHandler}
+        onSkip={dialogueCompleteHandler}
         variant="realm1"
       />
 
@@ -565,7 +566,7 @@ const styles = `
 .monolith {
   position: absolute;
   z-index: 10;
-  left: 50%;
+  left: 48%;
   bottom: 0;
   transform: translateX(-50%);
   width: 364px;
@@ -662,7 +663,7 @@ const styles = `
 .info-title {
   flex: 1;
   font-family: 'Cinzel Decorative', serif;
-  font-size: 13px;
+  font-size: 15px;
   color: #D4AF37;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -690,7 +691,7 @@ const styles = `
 .info-line:last-of-type { border-bottom: none; }
 .info-label {
   font-family: 'Cinzel', serif;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(212,175,55,0.5);
   letter-spacing: 0.18em;
   text-transform: uppercase;

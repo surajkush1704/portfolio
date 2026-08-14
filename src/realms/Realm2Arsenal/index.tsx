@@ -737,9 +737,38 @@ export default function Realm2Arsenal({ onNext, onPrev, initialFinished }: Props
                        </div>
                      )}
                    </motion.div>
-                 )
-               })}
-             </div>
+)
+                })}
+              </div>
+
+            {/* Carousel Navigation Buttons */}
+            <div className="r2-carousel-nav-bar">
+              <motion.button
+                className="r2-carousel-arrow"
+                onClick={() => handleSelectWeapon(WEAPONS[(selectedIndex - 1 + WEAPONS.length) % WEAPONS.length])}
+                aria-label="Previous weapon"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                ◀
+              </motion.button>
+              <span className="r2-carousel-counter">
+                {selectedIndex + 1} / {WEAPONS.length}
+              </span>
+              <motion.button
+                className="r2-carousel-arrow"
+                onClick={() => handleSelectWeapon(WEAPONS[(selectedIndex + 1) % WEAPONS.length])}
+                aria-label="Next weapon"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                ▶
+              </motion.button>
+            </div>
 
             {/* Left Side Information Box displaying all prop details */}
             {!mobile && (
@@ -825,8 +854,9 @@ export default function Realm2Arsenal({ onNext, onPrev, initialFinished }: Props
         state={dialogueState}
         visible={dialogueVisible}
         hintText="[ APPROACH THE PEDESTAL WEAPONS ]"
-        typewriterSpeed={28}
+        typewriterSpeed={33}
         onTypeComplete={handleTypeComplete}
+        onSkip={handleTypeComplete}
         variant="realm1"
       />
 
@@ -990,8 +1020,8 @@ const realm2Styles = `
   transition: filter 0.3s ease;
 }
 .r2-carousel-prop-img {
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
   object-fit: contain;
   animation: propFloat 4s ease-in-out infinite;
 }
@@ -1065,11 +1095,12 @@ const realm2Styles = `
   transform: translateX(-50%);
   z-index: 25;
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 16px;
   background: rgba(5,0,12,0.85);
   border: 1px solid rgba(212,175,55,0.25);
-  padding: 4px 14px;
+  padding: 8px 14px;
   border-radius: 20px;
   backdrop-filter: blur(8px);
   pointer-events: auto;
@@ -1078,9 +1109,10 @@ const realm2Styles = `
   background: transparent;
   border: 0;
   color: #D4AF37;
-  font-size: 20px;
+  font-size: 18px;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 4px 8px;
+  line-height: 1;
   transition: transform 0.2s, color 0.2s;
 }
 .r2-carousel-arrow:hover {
@@ -1091,6 +1123,7 @@ const realm2Styles = `
   font-size: 10px;
   color: rgba(212,175,55,0.6);
   letter-spacing: 0.2em;
+  margin: 4px 0;
 }
 
 /* Left Side Information Panel - Top Left Corner */
@@ -1133,7 +1166,7 @@ const realm2Styles = `
 }
 .r2-info-name {
   font-family: 'Cinzel Decorative', serif;
-  font-size: 12px;
+  font-size: 15px;
   color: #D4AF37;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1165,7 +1198,7 @@ const realm2Styles = `
 .r2-info-row:last-child { border-bottom: none; }
 
 .r2-info-label {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   min-width: 100px;
@@ -1179,7 +1212,7 @@ const realm2Styles = `
   padding-top: 2px;
 }
 .r2-info-value {
-  font-size: 11px;
+  font-size: 13px;
   color: rgba(212,175,55,0.88);
   letter-spacing: 0.03em;
   line-height: 1.5;
@@ -1200,14 +1233,14 @@ const realm2Styles = `
   height: calc(100% - 10px);
 }
 .r2-quote-text {
-  font-size: 10px;
+  font-size: 13px;
   font-style: italic;
   color: rgba(212,175,55,0.65);
   line-height: 1.6;
   margin: 0 0 4px 0;
 }
 .r2-quote-author {
-  font-size: 8px;
+  font-size: 10px;
   color: rgba(212,175,55,0.35);
   letter-spacing: 0.2em;
   text-transform: uppercase;

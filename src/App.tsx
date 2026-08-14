@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import Realm0Gate from './realms/Realm0Gate'
 import Realm1Souls from './realms/Realm1Souls'
 import Realm2Arsenal from './realms/Realm2Arsenal'
+import Realm3Trophies from './realms/Realm3Trophies'
 
 export default function App() {
   const [realm, setRealm] = useState(0)
@@ -22,16 +23,19 @@ export default function App() {
   const handleRealm1Prev = useCallback(() => goToRealm(0), [goToRealm])
   const handleRealm2Next = useCallback(() => { setRealmFinished(r => ({ ...r, 2: true })); goToRealm(3) }, [goToRealm])
   const handleRealm2Prev = useCallback(() => goToRealm(1), [goToRealm])
+  const handleRealm3Next = useCallback(() => { setRealmFinished(r => ({ ...r, 3: true })); goToRealm(4) }, [goToRealm])
+  const handleRealm3Prev = useCallback(() => goToRealm(2), [goToRealm])
 
   return (
     <>
       {realm === 0 && <Realm0Gate onNext={handleRealm0Next} initialFinished={!!realmFinished[0]} />}
       {realm === 1 && <Realm1Souls onNext={handleRealm1Next} onPrev={handleRealm1Prev} initialFinished={!!realmFinished[1]} />}
       {realm === 2 && <Realm2Arsenal onNext={handleRealm2Next} onPrev={handleRealm2Prev} initialFinished={!!realmFinished[2]} />}
-      {realm >= 3 && (
+      {realm === 3 && <Realm3Trophies onNext={handleRealm3Next} onPrev={handleRealm3Prev} />}
+      {realm >= 4 && (
         <div className="placeholder-realm">
           <p>Realm {realm} — Coming Soon</p>
-          <button onClick={() => goToRealm(2)}>Return to The Arsenal of Power</button>
+          <button onClick={() => goToRealm(3)}>Return to The Trophy Hall</button>
         </div>
       )}
 
