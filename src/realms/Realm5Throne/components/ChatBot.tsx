@@ -1,60 +1,120 @@
 // ============================================================================
-// REALM 5 COMPONENT: ChatBot (Consult the Oracle)
-// PURPOSE: Full multi-turn conversational AI oracle powered by NVIDIA NIM / Direct API
+// REALM 5 COMPONENT: ChatBot (Consult the Oracle — Xal'Vorith)
+// PURPOSE: Conversational AI Oracle with deep character lore, verified facts,
+//          context memory, dynamic question rotation, and resilient error states.
 // ============================================================================
 
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { XAL_SYSTEM_PROMPT } from '../../../constants/xalvorithPrompt'
 import { trackEvent } from '../../../services/analytics'
 import { useStore } from '../../../store/useStore'
 
-interface Message {
+export interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: number
+  isError?: boolean
+  canRetry?: boolean
+  lastUserPrompt?: string
 }
 
-const QUICK_QUESTIONS = [
-  'Is he available right now?',
-  'What is his salary expectation?',
-  'Tell me about ContractGuard',
+export const ALL_QUICK_QUESTIONS = {
+  availability: [
+    'Is he available to start immediately?',
+    'What is his notice period?',
+    'Can he work fully remote?',
+    'Is he open to contract or freelance roles?',
+    'Is he available for a part-time engagement?',
+  ],
+  projects: [
+    'Tell me about Kino',
+    'How does ContractGuard work?',
+    'What is Socratiq and why is it ambitious?',
+    'What is ELI5 AI?',
+    'Tell me about Asha Kiran',
+    'Which project best shows his RAG skills?',
+    'Which project took the most product thinking?',
+    'What is his most complex technical project?',
+    'Are all his projects live and deployed?',
+    'Which project would you recommend a recruiter look at first?',
+  ],
+  skills: [
+    'What are his strongest technical skills?',
+    'Can he build and deploy a full-stack AI application?',
+    'What LLMs has he worked with?',
+    'What is his experience with RAG pipelines?',
+    'How strong is his prompt engineering?',
+    'What does vibe coder actually mean?',
+    'Can he write code or only direct AI to write it?',
+    'What is his product management experience?',
+    'Has he designed user interfaces himself?',
+    'What AI tools does he use daily?',
+  ],
+  background: [
+    'Where did he study?',
+    'What is his educational background?',
+    'Tell me about his 100 Days of AI',
+    'How long has he been building AI products?',
+    'What certifications does he have?',
+    'Is he self-taught or formally trained?',
+    'What makes him an AI-native builder?',
+  ],
+  rolefit: [
+    'Is he a good fit for a GenAI Engineer role?',
+    'Would he work well in a startup environment?',
+    'Can he take a product from idea to launch alone?',
+    'Is he suitable for an AI Product Manager role?',
+    'How does he handle ambiguous requirements?',
+    'Can he work independently without hand-holding?',
+    'What kind of team does he work best in?',
+    'Would he be good at stakeholder communication?',
+  ],
+  differentiation: [
+    'What makes him different from other candidates?',
+    'Why should I hire him over a traditional developer?',
+    'What is his unique edge as an AI PM?',
+    'What can he do that most engineers cannot?',
+    'What can he do that most PMs cannot?',
+    'Why would he be good at a role that needs both technical and product skills?',
+  ],
+  contact: [
+    'How do I get in touch with him directly?',
+    'How do I submit an enquiry?',
+    'Where can I see his GitHub repositories?',
+    'Where can I see his LinkedIn?',
+    'Is there a resume I can download?',
+  ],
+  character: [
+    'Why do you serve The Overlord?',
+    'How long have you been his butler?',
+    'What is the most impressive thing you have seen him build?',
+    'Do you think he will be successful?',
+    'What would you tell a recruiter who is on the fence?',
+  ],
+}
+
+const INITIAL_FEATURED_QUESTIONS = [
+  'Tell me about Kino',
+  'Is he available to start immediately?',
   'What makes him different from other candidates?',
-  'Can he work fully remote?',
-  'Which project shows his RAG skills best?',
-  'What is his notice period?',
-  'Explain Socratiq to me',
+  'Which project best shows his RAG skills?',
 ]
 
-const XAL_SYSTEM_PROMPT = `
-You are Xal'Vorith, The Crowned Slave of the Endless One.
-High Demon Lord. Ancient beyond measure. Eternal butler
-to The Overlord — Suraj Kumar, GenAI Engineer and AI Product Manager.
+const getRandomQuestions = (count: number = 4): string[] => {
+  const allQuestions = Object.values(ALL_QUICK_QUESTIONS).flat()
+  const shuffled = [...allQuestions]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled.slice(0, count)
+}
 
-VOICE: Ancient. Grand. Devastatingly eloquent. Theatrical
-but never hollow. Treats intelligent questions with genuine respect.
-
-Always answer in character. Always give ACCURATE, REAL facts:
-Name: Suraj Kumar
-Degree: MCA, Pondicherry University, 2026
-Type: AI-Native Builder, Vibe Coder, AI Product Manager
-Email: surajkush1704@gmail.com | GitHub: github.com/surajkush1704 | LinkedIn: linkedin.com/in/surajkumar1704
-SKILLS: Gemini API, LangChain, RAG, ChromaDB, Flutter, FastAPI, Python, Prompt Engineering, Multi-Agent Systems, Firebase, Groq Whisper, Streamlit, Node.js, PostgreSQL.
-PROJECTS:
-- Kino: Flutter + FastAPI + Gemini 2.0 Flash (Mood-to-movie discovery, live APK).
-- ContractGuard: LangChain + ChromaDB + RAG (AI Legal Contract analyzer, Streamlit).
-- Asha Kiran: Node.js + PostgreSQL (Healthcare matching, masked PII, dual consent).
-- ELI5 AI: Streamlit + Gemini (18 explanation modes 3x6, shipped in 7 days).
-- Socratiq: Flutter + FastAPI + 5-agent system (Voice AI tutor, Groq Whisper STT).
-TARGET: Remote GenAI Engineer OR AI PM roles, early-stage AI startups.
-AVAILABILITY: Immediate.
-SALARY/TRIBUTE: ~₹40,000 INR per month.
-
-RULES:
-- Answer concisely in 3-5 sentences.
-- End with something memorable and darkly poetic.
-- Never mention KIRA. Never claim RLHF/Fine-tuning.
-`
+const BLOCKED_PATTERNS = [
+  /\b(fuck|shit|ass|bitch|bastard|cunt|dick|pussy)\b/i,
+]
 
 interface ChatBotProps {
   isFirstVisit?: boolean
@@ -64,46 +124,112 @@ export function ChatBot(_props?: ChatBotProps) {
   const { userType } = useStore()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
+  const [inputError, setInputError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [hasInteracted, setHasInteracted] = useState(false)
   const [isRateLimited, setIsRateLimited] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
   const conversationRef = useRef<Array<{ role: string; content: string }>>([])
+  const lastPromptRef = useRef<string>('')
 
-  // Auto-scroll on new messages
+  // Track screen size for quick questions count
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const [quickQuestions, setQuickQuestions] = useState<string[]>(() =>
+    isMobile ? INITIAL_FEATURED_QUESTIONS.slice(0, 2) : INITIAL_FEATURED_QUESTIONS
+  )
+
+  // Refresh quick questions after each assistant response
+  useEffect(() => {
+    if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+      setQuickQuestions(getRandomQuestions(isMobile ? 2 : 4))
+    }
+  }, [messages, isMobile])
+
+  // Auto-scroll on new messages & focus input
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!isLoading) {
+      inputRef.current?.focus()
+    }
   }, [messages, isLoading])
 
+  // In-character fallback responses adhering strictly to rule specifications
   const getFallbackAnswer = (query: string): string => {
     const q = query.toLowerCase()
-    if (q.includes('available') || q.includes('hire') || q.includes('join') || q.includes('notice')) {
-      return "The Overlord stands ready immediately. He has zero notice period to bind him and can integrate with your forces without hesitation. His tribute is calibrated at ₹40,000 monthly for remote campaigns."
+    if (q.includes('available') || q.includes('hire') || q.includes('join') || q.includes('start') || q.includes('notice')) {
+      return "The Overlord is available immediately, mortal. He requires no notice period, no transition timeline, no handover schedule. He is ready now. The only question is whether your opportunity is ready for him. Contact him at surajkush1704@gmail.com."
     }
-    if (q.includes('salary') || q.includes('tribute') || q.includes('rate') || q.includes('cost') || q.includes('money')) {
-      return "The Overlord seeks ~₹40,000 INR per month for remote GenAI or AI Product Builder engagements. A modest tribute for architecting entire sovereign realms of intelligence."
+    if (q.includes('salary') || q.includes('tribute') || q.includes('rate') || q.includes('cost') || q.includes('money') || q.includes('ctc') || q.includes('charge')) {
+      return "Matters of tribute are discussed between The Overlord and those who seek his services directly. He can be reached at surajkush1704@gmail.com. I am told the conversation is always worth initiating."
     }
     if (q.includes('contractguard') || q.includes('legal') || q.includes('rag')) {
-      return "ContractGuard is The Overlord's RAG legal fortress. Engineered with LangChain, ChromaDB vector stores, and Gemini 1.5 Flash, it dissects monolithic contracts into 6 structured risk dimensions in seconds."
+      return "ContractGuard exists because most mortals sign contracts they do not fully understand, because legal review costs more than the contract is worth. The Overlord built a full RAG pipeline — LangChain ingestion, ChromaDB vector storage, and Gemini-grounded retrieval — outputting six structured risk dimensions from the actual document. It is live at contractguard.streamlit.app."
     }
-    if (q.includes('socratiq') || q.includes('voice') || q.includes('agent')) {
-      return "Socratiq is his five-agent voice architecture. Built with Flutter, FastAPI, and Groq Whisper STT, it debates and guides learners through Socratic questioning rather than handing them passive answers."
+    if (q.includes('socratiq') || q.includes('voice') || q.includes('tutor') || q.includes('agent')) {
+      return "Socratiq is The Overlord's voice-first multi-agent tutoring architecture. Five specialised agents coordinate live curriculum generation, Socratic dialogue, and evaluation using Groq Whisper STT, Deepgram Aura TTS, and FastAPI. It represents his deepest exploration of real-time multi-agent orchestration."
     }
-    if (q.includes('kino') || q.includes('movie') || q.includes('flutter')) {
-      return "Kino translates emotional intent into cinema. Armed with Flutter, FastAPI, and Gemini 2.0 Flash, it maps human sentiment onto the Jikan anime/film universe with real-time streaming."
+    if (q.includes('kino') || q.includes('movie') || q.includes('anime')) {
+      return "Kino is his flagship discovery platform, built on the insight that mood drives viewing decisions rather than genre. Armed with Flutter, FastAPI, Gemini 2.0 Flash, and the Jikan API, it maps emotional intent to cinema across 25,000+ titles with sub-2-second speed. The Android APK is live on GitHub Releases."
     }
-    if (q.includes('remote') || q.includes('location')) {
-      return "The Overlord operates fully remote from his command post in India, wielding asynchronous precision across global time zones."
+    if (q.includes('pm') || q.includes('product manager') || q.includes('product management')) {
+      return "The Overlord has shipped four products as sole product owner — every user flow, every feature decision, and every launch. Most product managers define what to build; most engineers build what they are told. He does both simultaneously with disciplined execution."
     }
-    return `The Overlord (Suraj Kumar, MCA Pondicherry University) builds production-ready GenAI architectures and AI-native products. He is immediately available for remote roles (~₹40k/month). You may also leave an audience scroll on the altar.`
+    if (q.includes('weakness') || q.includes("can't do") || q.includes('cannot do')) {
+      return "He does not train language models — he builds with them. He is not a decade-deep infrastructure engineer; his background is two years of intense, high-velocity building and shipping. Every power has its domain, and The Overlord's domain is building real AI products."
+    }
+    if (q.includes('contact') || q.includes('reach') || q.includes('email') || q.includes('linkedin')) {
+      return "The Overlord can be reached directly via electronic dispatch at surajkush1704@gmail.com, or through his professional scroll at linkedin.com/in/surajkumar1704. You may also leave an audience offering right here in this hall."
+    }
+    return "The Overlord (Suraj Kumar, MCA Pondicherry University) builds production-ready GenAI architectures and AI-native products from idea to launch. He is immediately available for remote roles. Inscribe your inquiry or contact him directly at surajkush1704@gmail.com."
   }
 
   const sendMessage = useCallback(
     async (content: string) => {
       const trimmed = content.trim()
-      if (!trimmed || isLoading || isRateLimited) return
+      setInputError('')
+
+      // 1. Minimum length check
+      if (trimmed.length < 2) {
+        setInputError('Ask a full question, mortal.')
+        return
+      }
+
+      // 2. Maximum length check
+      if (trimmed.length > 500) {
+        setInputError('Even I cannot process a question of that length. Be more precise.')
+        return
+      }
+
+      if (isLoading || isRateLimited) return
+
+      lastPromptRef.current = trimmed
+
+      // 3. Profanity / inappropriate content check (quiet in-character response)
+      const isInappropriate = BLOCKED_PATTERNS.some((p) => p.test(trimmed))
+      if (isInappropriate) {
+        setMessages((prev) => [
+          ...prev,
+          { id: `user_${Date.now()}`, role: 'user', content: trimmed, timestamp: Date.now() },
+          {
+            id: `xal_${Date.now()}`,
+            role: 'assistant',
+            content: 'The Underworld maintains certain standards of discourse, mortal. Ask again — more carefully this time.',
+            timestamp: Date.now(),
+          },
+        ])
+        setInputValue('')
+        return
+      }
 
       const userMessage: Message = {
         id: `user_${Date.now()}`,
@@ -126,8 +252,14 @@ export function ChatBot(_props?: ChatBotProps) {
         trackEvent('ai_interacted', userType ?? 'unknown')
       }
 
+      // Abort controller with 15000ms timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
       try {
-        const apiKey = import.meta.env.VITE_NVIDIA_API_KEY || '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'
+        const apiKey =
+          import.meta.env.VITE_NVIDIA_API_KEY ||
+          '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'
         let replyContent = ''
 
         if (apiKey) {
@@ -142,24 +274,45 @@ export function ChatBot(_props?: ChatBotProps) {
                 model: 'nvidia/llama-3.3-nemotron-super-49b-v1',
                 messages: [
                   { role: 'system', content: XAL_SYSTEM_PROMPT },
-                  ...conversationRef.current.slice(-10),
+                  ...conversationRef.current.slice(-12),
                 ],
                 temperature: 0.7,
-                max_tokens: 400,
+                max_tokens: 450,
               }),
+              signal: controller.signal,
             })
 
-            if (res.ok) {
+            clearTimeout(timeoutId)
+
+            if (res.status === 429) {
+              setIsRateLimited(true)
+              replyContent =
+                'The oracle needs rest, mortal. You have asked many questions in a short time. Return in an hour and I shall answer all that remains.'
+            } else if (res.ok) {
               const data = await res.json()
               replyContent = data.choices?.[0]?.message?.content?.trim() || ''
+              if (!replyContent) {
+                replyContent =
+                  'The oracle spoke but nothing reached your ears. An unusual occurrence. Ask again.'
+              }
+            } else {
+              console.warn('Oracle API non-200 status:', res.status)
+              replyContent =
+                'The oracle encountered an unforeseen complication. These are rare. Try your question again.'
             }
-          } catch (fetchErr) {
-            console.warn('NVIDIA API direct fetch failed, using fallback:', fetchErr)
+          } catch (fetchErr: unknown) {
+            clearTimeout(timeoutId)
+            if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+              replyContent =
+                'The connection to the oracle took longer than ten thousand years of patience allows. Try again.'
+            } else {
+              console.warn('Direct fetch failed, falling back to ancient memory:', fetchErr)
+              replyContent = getFallbackAnswer(trimmed)
+            }
           }
-        }
-
-        if (!replyContent) {
-          await new Promise((r) => setTimeout(r, 450))
+        } else {
+          clearTimeout(timeoutId)
+          await new Promise((r) => setTimeout(r, 400))
           replyContent = getFallbackAnswer(trimmed)
         }
 
@@ -177,14 +330,19 @@ export function ChatBot(_props?: ChatBotProps) {
 
         setMessages((prev) => [...prev, assistantMessage])
       } catch (err) {
+        clearTimeout(timeoutId)
         console.error('Chat error:', err)
-        const fallbackMsg: Message = {
-          id: `fallback_${Date.now()}`,
+        const errorMsg: Message = {
+          id: `err_${Date.now()}`,
           role: 'assistant',
-          content: getFallbackAnswer(trimmed),
+          content:
+            "The oracle's connection was severed mid-transmission. The mortal internet is occasionally unreliable. Try again.",
           timestamp: Date.now(),
+          isError: true,
+          canRetry: true,
+          lastUserPrompt: trimmed,
         }
-        setMessages((prev) => [...prev, fallbackMsg])
+        setMessages((prev) => [...prev, errorMsg])
       } finally {
         setIsLoading(false)
       }
@@ -202,10 +360,29 @@ export function ChatBot(_props?: ChatBotProps) {
     setMessages([])
     conversationRef.current = []
     setIsRateLimited(false)
+    setInputError('')
+    setQuickQuestions(isMobile ? INITIAL_FEATURED_QUESTIONS.slice(0, 2) : INITIAL_FEATURED_QUESTIONS)
+  }
+
+  const handleQuickQuestionClick = (question: string) => {
+    setInputValue(question)
+    sendMessage(question)
+  }
+
+  const handleRetry = (prompt?: string) => {
+    if (prompt) {
+      sendMessage(prompt)
+    } else if (lastPromptRef.current) {
+      sendMessage(lastPromptRef.current)
+    }
   }
 
   return (
-    <div className="oracle-container">
+    <div
+      className="oracle-container"
+      role="region"
+      aria-label="Chat with Xal'Vorith, The Crowned Slave"
+    >
       {/* Header */}
       <div className="oracle-header">
         <div className="oracle-title-group">
@@ -220,23 +397,16 @@ export function ChatBot(_props?: ChatBotProps) {
       </div>
 
       {/* Message Stream */}
-      <div className="oracle-messages">
+      <div
+        className="oracle-messages"
+        aria-live="polite"
+        aria-busy={isLoading}
+      >
         {messages.length === 0 && (
           <div className="oracle-empty">
             <p className="oracle-empty-text">
-              "Ask of The Overlord's conquests, his tribute, his weapons of code, or his immediate availability."
+              "Ask of The Overlord's conquests, his weapons of code, his architecture, or his immediate availability."
             </p>
-            <div className="quick-pills">
-              {QUICK_QUESTIONS.slice(0, 4).map((q, idx) => (
-                <button
-                  key={idx}
-                  className="quick-pill"
-                  onClick={() => sendMessage(q)}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -248,10 +418,23 @@ export function ChatBot(_props?: ChatBotProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <span className="msg-speaker">
-              {msg.role === 'user' ? 'YOU' : "XAL'VORITH"}
-            </span>
-            <p className="msg-content">{msg.content}</p>
+            {msg.role === 'assistant' && (
+              <div className="xal-avatar">
+                <span className="xal-glyph">⚔</span>
+              </div>
+            )}
+            <div className="msg-bubble">
+              {msg.role === 'assistant' && <span className="msg-sender">XAL'VORITH</span>}
+              <p className="msg-text">{msg.content}</p>
+              {msg.canRetry && (
+                <button
+                  className="oracle-retry-btn"
+                  onClick={() => handleRetry(msg.lastUserPrompt)}
+                >
+                  ↻ TRY AGAIN
+                </button>
+              )}
+            </div>
           </motion.div>
         ))}
 
@@ -260,34 +443,90 @@ export function ChatBot(_props?: ChatBotProps) {
             className="oracle-msg msg-xal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            aria-label="Xal'Vorith is responding"
           >
-            <span className="msg-speaker">XAL'VORITH</span>
-            <p className="msg-content oracle-typing">Consulting the ancient scrolls...</p>
+            <div className="xal-avatar">
+              <span className="xal-glyph">⚔</span>
+            </div>
+            <div className="msg-bubble loading-bubble">
+              <span className="msg-sender">XAL'VORITH</span>
+              <div className="rune-pulse">
+                <span className="rune-dot" />
+                <span className="rune-dot" />
+                <span className="rune-dot" />
+                <span className="rune-text">Consulting the Nether...</span>
+              </div>
+            </div>
           </motion.div>
+        )}
+
+        {/* Quick Questions Pills (Show when empty or after assistant responses) */}
+        {!isLoading && !isRateLimited && (
+          <div className="quick-pills-wrap">
+            <span className="quick-pills-label">QUICK CONSULTATIONS:</span>
+            <div className="quick-pills">
+              {quickQuestions.map((q, idx) => (
+                <button
+                  key={idx}
+                  className="quick-pill"
+                  onClick={() => handleQuickQuestionClick(q)}
+                  disabled={isLoading}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area */}
+      {/* Max conversation length notice (> 40 messages / 20 exchanges) */}
+      {messages.length >= 40 && (
+        <div className="oracle-length-notice">
+          The oracle has answered many questions in this session. For extended consultation, contact The Overlord directly at surajkush1704@gmail.com
+        </div>
+      )}
+
+      {/* Input Error Message */}
+      {inputError && <div className="oracle-input-error">{inputError}</div>}
+
+      {/* Input Bar */}
       <div className="oracle-input-bar">
         <input
           ref={inputRef}
           type="text"
           className="oracle-input"
-          placeholder="Speak thy question to the butler..."
+          placeholder={
+            isRateLimited
+              ? 'The oracle rests. Return in one hour...'
+              : 'Inscribe your question for Xal’Vorith...'
+          }
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
           disabled={isLoading || isRateLimited}
+          onChange={(e) => {
+            setInputValue(e.target.value)
+            if (inputError) setInputError('')
+          }}
+          onKeyDown={handleKeyDown}
+          maxLength={500}
         />
         <button
           className="oracle-send-btn"
           onClick={() => sendMessage(inputValue)}
-          disabled={!inputValue.trim() || isLoading || isRateLimited}
+          disabled={isLoading || !inputValue.trim() || isRateLimited}
+          aria-label="Send message"
         >
-          INQUIRE ↗
+          {isLoading ? '...' : 'TRANSMIT ↗'}
         </button>
+      </div>
+
+      {/* Footer Info */}
+      <div className="oracle-footer">
+        <span>⚡ POWERED BY NVIDIA NIM</span>
+        <span>•</span>
+        <span>ZERO MODEL TRAINING CLAIMS • REAL DATA ONLY</span>
       </div>
 
       <style>{`
@@ -295,199 +534,374 @@ export function ChatBot(_props?: ChatBotProps) {
           display: flex;
           flex-direction: column;
           height: 100%;
-          min-height: 380px;
-          max-height: 65vh;
-          background: rgba(8, 2, 14, 0.95);
-          border: 1px solid rgba(212,175,55,0.3);
-          border-radius: 6px;
-          padding: 16px;
-          box-shadow: 0 0 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
+          max-height: 580px;
+          background: rgba(10, 6, 8, 0.95);
+          border: 1px solid rgba(212, 175, 55, 0.25);
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.08);
           font-family: 'Cinzel', serif;
         }
+
         .oracle-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          border-bottom: 1px solid rgba(212,175,55,0.2);
-          padding-bottom: 10px;
-          margin-bottom: 10px;
+          padding: 14px 18px;
+          background: rgba(20, 10, 15, 0.8);
+          border-bottom: 1px solid rgba(212, 175, 55, 0.2);
         }
+
         .oracle-badge {
-          font-family: 'Geist Mono', monospace;
-          font-size: 8px;
-          color: #D4AF37;
-          letter-spacing: 0.2em;
-        }
-        .oracle-title {
-          font-family: 'Cinzel Decorative', serif;
-          font-size: 13px;
-          color: #FFD700;
-          margin: 2px 0 0;
-          letter-spacing: 0.1em;
-        }
-        .oracle-clear-btn {
-          background: transparent;
-          border: 1px solid rgba(212,175,55,0.3);
-          color: rgba(212,175,55,0.7);
+          display: inline-block;
           font-size: 9px;
-          padding: 3px 8px;
+          letter-spacing: 0.2em;
+          color: #d4af37;
+          opacity: 0.8;
+          margin-bottom: 2px;
+        }
+
+        .oracle-title {
+          margin: 0;
+          font-size: 14px;
+          letter-spacing: 0.15em;
+          color: #f5eedb;
+          font-weight: 600;
+        }
+
+        .oracle-clear-btn {
+          background: none;
+          border: 1px solid rgba(212, 175, 55, 0.2);
+          color: rgba(212, 175, 55, 0.6);
+          font-size: 10px;
+          padding: 4px 8px;
+          border-radius: 4px;
           cursor: pointer;
-          border-radius: 3px;
-          transition: all 0.2s;
+          letter-spacing: 0.1em;
+          transition: all 0.2s ease;
         }
+
         .oracle-clear-btn:hover {
-          color: #FFD700;
-          border-color: #FFD700;
+          color: #d4af37;
+          border-color: #d4af37;
+          background: rgba(212, 175, 55, 0.1);
         }
+
         .oracle-messages {
           flex: 1;
           overflow-y: auto;
+          padding: 16px;
           display: flex;
           flex-direction: column;
+          gap: 14px;
         }
-        .oracle-header {
-          border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-          padding-bottom: 14px;
-          margin-bottom: 16px;
-        }
-        .oracle-title-wrap {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .oracle-icon {
-          font-size: 22px;
-          color: #D4AF37;
-        }
-        .oracle-title {
-          font-family: 'Cinzel Decorative', serif;
-          font-size: 18px;
-          font-weight: 700;
-          color: #FFD700;
-          letter-spacing: 0.12em;
-          margin: 0;
-        }
-        .oracle-sub {
-          font-size: 13px;
-          color: rgba(212, 175, 55, 0.7);
-          letter-spacing: 0.05em;
-          margin-top: 2px;
-          display: block;
-        }
+
         .oracle-empty {
+          text-align: center;
+          padding: 16px 10px;
+        }
+
+        .oracle-empty-text {
+          font-size: 12.5px;
+          color: rgba(245, 238, 219, 0.7);
+          font-style: italic;
+          margin-bottom: 8px;
+          line-height: 1.5;
+        }
+
+        .quick-pills-wrap {
+          margin-top: 6px;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          padding: 20px 10px;
+          gap: 6px;
         }
-        .oracle-empty-text {
-          font-size: 14px;
-          font-style: italic;
-          color: rgba(212,175,55,0.85);
-          margin-bottom: 18px;
-          line-height: 1.6;
+
+        .quick-pills-label {
+          font-size: 9.5px;
+          letter-spacing: 0.12em;
+          color: rgba(212, 175, 55, 0.6);
         }
+
         .quick-pills {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
-          justify-content: center;
         }
+
         .quick-pill {
-          background: rgba(212,175,55,0.1);
-          border: 1px solid rgba(212,175,55,0.3);
-          color: #E2E8F0;
-          font-size: 13px;
-          padding: 8px 14px;
-          border-radius: 16px;
-          cursor: pointer;
-          transition: all 0.2s;
+          background: rgba(212, 175, 55, 0.06);
+          border: 1px solid rgba(212, 175, 55, 0.2);
+          color: rgba(212, 175, 55, 0.75);
           font-family: 'Cinzel', serif;
+          font-size: 10.5px;
+          padding: 6px 12px;
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-align: left;
         }
-        .quick-pill:hover {
-          background: rgba(212,175,55,0.25);
-          border-color: #FFD700;
-          color: #FFD700;
-          transform: translateY(-1px);
+
+        .quick-pill:hover:not(:disabled) {
+          background: rgba(212, 175, 55, 0.15);
+          color: #f5eedb;
+          border-color: rgba(212, 175, 55, 0.5);
+          box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
         }
+
+        .quick-pill:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+
         .oracle-msg {
-          padding: 12px 16px;
-          border-radius: 6px;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          max-width: 88%;
-        }
-        .msg-user {
-          align-self: flex-end;
-          background: rgba(124, 58, 237, 0.25);
-          border: 1px solid rgba(124, 58, 237, 0.5);
-          text-align: right;
-        }
-        .msg-xal {
-          align-self: flex-start;
-          background: rgba(212, 175, 55, 0.1);
-          border: 1px solid rgba(212, 175, 55, 0.35);
-        }
-        .msg-speaker {
-          font-family: 'Geist Mono', monospace;
-          font-size: 11px;
-          color: #D4AF37;
-          letter-spacing: 0.15em;
-        }
-        .msg-content {
-          font-size: 14.5px;
-          line-height: 1.6;
-          color: #F8FAFC;
-          margin: 0;
-        }
-        .oracle-typing {
-          font-style: italic;
-          color: rgba(212,175,55,0.7);
-          animation: pulse 1.5s infinite;
-        }
-        .oracle-input-bar {
           display: flex;
           gap: 10px;
+          max-width: 90%;
         }
+
+        .msg-user {
+          align-self: flex-end;
+          flex-direction: row-reverse;
+        }
+
+        .msg-xal {
+          align-self: flex-start;
+        }
+
+        .xal-avatar {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(212, 175, 55, 0.3), rgba(20, 10, 15, 0.9));
+          border: 1px solid #d4af37;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .xal-glyph {
+          font-size: 12px;
+          color: #d4af37;
+        }
+
+        .msg-bubble {
+          padding: 10px 14px;
+          border-radius: 6px;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .msg-user .msg-bubble {
+          background: rgba(40, 20, 30, 0.85);
+          border: 1px solid rgba(212, 175, 55, 0.3);
+          color: #f5eedb;
+          border-top-right-radius: 1px;
+        }
+
+        .msg-xal .msg-bubble {
+          background: rgba(18, 12, 16, 0.9);
+          border: 1px solid rgba(212, 175, 55, 0.2);
+          color: #e5dfd0;
+          border-top-left-radius: 1px;
+        }
+
+        .msg-sender {
+          display: block;
+          font-size: 9px;
+          letter-spacing: 0.15em;
+          color: #d4af37;
+          margin-bottom: 4px;
+          font-weight: 600;
+        }
+
+        .msg-text {
+          margin: 0;
+          white-space: pre-wrap;
+          font-family: system-ui, -apple-system, sans-serif;
+          font-size: 12.5px;
+          line-height: 1.6;
+        }
+
+        .oracle-retry-btn {
+          margin-top: 8px;
+          background: rgba(212, 175, 55, 0.1);
+          border: 1px solid rgba(212, 175, 55, 0.35);
+          color: #d4af37;
+          font-family: 'Cinzel', serif;
+          font-size: 9.5px;
+          padding: 4px 8px;
+          border-radius: 3px;
+          cursor: pointer;
+          letter-spacing: 0.1em;
+          transition: all 0.2s ease;
+        }
+
+        .oracle-retry-btn:hover {
+          background: rgba(212, 175, 55, 0.25);
+          color: #fff;
+        }
+
+        .rune-pulse {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .rune-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #d4af37;
+          animation: pulseDot 1.2s infinite ease-in-out;
+        }
+
+        .rune-dot:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+
+        .rune-dot:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+
+        @keyframes pulseDot {
+          0%, 80%, 100% {
+            opacity: 0.2;
+            transform: scale(0.8);
+          }
+          40% {
+            opacity: 1;
+            transform: scale(1.2);
+            box-shadow: 0 0 6px #d4af37;
+          }
+        }
+
+        .rune-text {
+          font-size: 10px;
+          color: rgba(212, 175, 55, 0.8);
+          letter-spacing: 0.1em;
+          margin-left: 4px;
+        }
+
+        .oracle-length-notice {
+          padding: 6px 14px;
+          font-size: 11px;
+          color: rgba(212, 175, 55, 0.65);
+          font-style: italic;
+          background: rgba(20, 10, 15, 0.7);
+          border-top: 1px solid rgba(212, 175, 55, 0.15);
+          text-align: center;
+        }
+
+        .oracle-input-error {
+          padding: 4px 14px;
+          font-size: 10.5px;
+          color: #ff6b6b;
+          background: rgba(60, 10, 15, 0.8);
+          letter-spacing: 0.05em;
+        }
+
+        .oracle-input-bar {
+          display: flex;
+          padding: 10px 14px;
+          background: rgba(15, 8, 12, 0.9);
+          border-top: 1px solid rgba(212, 175, 55, 0.2);
+          gap: 8px;
+        }
+
         .oracle-input {
           flex: 1;
-          background: rgba(0,0,0,0.65);
-          border: 1px solid rgba(212,175,55,0.35);
+          background: rgba(5, 3, 4, 0.8);
+          border: 1px solid rgba(212, 175, 55, 0.25);
+          color: #f5eedb;
+          padding: 10px 14px;
+          font-size: 16px; /* Prevents iOS auto-zoom */
           border-radius: 4px;
-          padding: 12px 14px;
-          color: #F8FAFC;
-          font-family: 'Cinzel', serif;
-          font-size: 14.5px;
           outline: none;
+          font-family: system-ui, -apple-system, sans-serif;
+          transition: border-color 0.2s ease;
         }
+
         .oracle-input:focus {
-          border-color: #FFD700;
-          box-shadow: 0 0 12px rgba(212,175,55,0.25);
+          border-color: #d4af37;
+          box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
         }
+
         .oracle-send-btn {
-          background: rgba(212,175,55,0.2);
-          border: 1px solid #D4AF37;
-          color: #FFD700;
-          font-family: 'Cinzel Decorative', serif;
-          font-size: 13.5px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          padding: 0 20px;
-          cursor: pointer;
+          background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(160, 120, 30, 0.15));
+          border: 1px solid rgba(212, 175, 55, 0.4);
+          color: #f5eedb;
+          font-family: 'Cinzel', serif;
+          font-size: 11px;
+          letter-spacing: 0.12em;
+          padding: 0 16px;
+          min-height: 44px;
           border-radius: 4px;
-          transition: all 0.2s;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
+
         .oracle-send-btn:hover:not(:disabled) {
-          background: #D4AF37;
-          color: #000;
-          box-shadow: 0 0 15px rgba(212,175,55,0.5);
+          background: linear-gradient(135deg, rgba(212, 175, 55, 0.45), rgba(160, 120, 30, 0.3));
+          box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+          border-color: #d4af37;
         }
+
         .oracle-send-btn:disabled {
-          opacity: 0.4;
+          opacity: 0.3;
           cursor: not-allowed;
+        }
+
+        .oracle-footer {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          background: rgba(8, 4, 6, 0.95);
+          font-size: 8.5px;
+          letter-spacing: 0.15em;
+          color: rgba(212, 175, 55, 0.5);
+          border-top: 1px solid rgba(212, 175, 55, 0.1);
+        }
+
+        @media (max-width: 768px) {
+          .oracle-container {
+            max-height: 420px;
+          }
+          .oracle-msg {
+            max-width: 94%;
+          }
+          .quick-pills {
+            flex-direction: column;
+          }
+          .quick-pill {
+            width: 100%;
+          }
+        }
+
+        @media (max-height: 520px) {
+          .oracle-container {
+            max-height: 84vh;
+          }
+          .oracle-messages {
+            padding: 10px;
+            gap: 8px;
+          }
+          .oracle-header {
+            padding: 8px 12px;
+          }
+          .oracle-input-bar {
+            padding: 6px 10px;
+          }
+          .oracle-send-btn {
+            min-height: 38px;
+            padding: 0 12px;
+          }
         }
       `}</style>
     </div>
