@@ -52,7 +52,7 @@ const PATHS = {
     ],
     visitedDialogue: [
       'You have seen the chronicles. One hundred days of documented building. You understand now that his consistency is not occasional — it is structural.',
-      'The right path (GitHub) awaits if you wish further proof. Or click The Overlord to proceed to the castle.',
+      'The right path (GitHub) awaits if you wish further proof. Or step into the center path to enter the Throne Room.',
     ],
   },
   right: {
@@ -65,7 +65,7 @@ const PATHS = {
     ],
     visitedDialogue: [
       'The repositories do not disappoint. Every project, every commit, every incident response. All of it exactly as I described.',
-      'You have seen what he builds and the evidence that he built it. Click The Overlord to enter the Throne Room.',
+      'You have seen what he builds and the evidence that he built it. Step through the center path or click THE THRONE to enter.',
     ],
   },
 }
@@ -74,17 +74,17 @@ const DIALOGUES = {
   opening: [
     'Ah. You made it this far.',
     'Most mortals who enter this Underworld turn back before reaching these paths. They see the Arsenal and are overwhelmed. They cross the Trophy Hall and feel they have seen enough.',
-    'They are wrong. What you have seen is what he has built. What lies beyond these arrows is proof that he continues to build. Every day. Without pause.',
-    'Click the Left Arrow (LinkedIn) for his 100 days of AI building, or the Right Arrow (GitHub) for his open-source repositories. I will watch your choice.',
+    'They are wrong. What lies beyond these arrows is proof that he continues to build. Every day. Without pause.',
+    'Explore the Left Arrow (LinkedIn), the Right Arrow (GitHub), or proceed straight through the center path into the Throne Room. The Overlord awaits.',
   ],
 
   afterBothVisited: [
     'Both portals witnessed. You have been thorough, mortal. Most do not bother with both — they take the one that confirms what they already wanted to believe.',
     'You chose to see everything. That is exactly the disposition The Overlord values in the people he works with.',
-    'The center path. The castle. The Throne Room. He is waiting. Click the center path or The Overlord to enter.',
+    'The center path. The castle. The Throne Room. Step forward to enter.',
   ],
 
-  proceedToThrone: ['Follow the center path, mortal. I will meet you there.'],
+  proceedToThrone: ['Follow the center path into the Throne Room, mortal. The Overlord awaits your arrival.'],
 }
 
 const DIALOGUE_PAUSES: Record<string, number> = {
@@ -606,20 +606,8 @@ export default function Realm4Chronicles({ onNext, onPrev, initialFinished }: Pr
   // Click handler for Xal'Vorith character or center path
   const handleCharacterOrCenterClick = useCallback(() => {
     if (phase === 'opening' || phase === 'exiting') return
-
-    if (linkedinVisited && githubVisited) {
-      handleProceedToThrone()
-      return
-    }
-
-    // Nudge dialogue if both not visited yet
-    setDialogueVisible(true)
-    setDialogueState('narration')
-    setDialogueText(
-      'The Overlord would want you to have seen everything first, mortal. Click the Left Arrow (LinkedIn) and Right Arrow (GitHub) to witness his evidence.'
-    )
-    play('pathHoverLeft')
-  }, [phase, linkedinVisited, githubVisited, handleProceedToThrone, play])
+    handleProceedToThrone()
+  }, [phase, handleProceedToThrone])
 
   const handlePrevRealm = useCallback(() => {
     fadeAllAudio()
@@ -748,15 +736,13 @@ export default function Realm4Chronicles({ onNext, onPrev, initialFinished }: Pr
       </button>
 
       {/* Proceed to The Throne (Realm 5) button */}
-      {(linkedinVisited && githubVisited || initialFinished) && (
-        <button
-          className="realm-nav-btn next-btn"
-          onClick={handleProceedToThrone}
-          aria-label="Proceed to Throne Room"
-        >
-          THE THRONE ↗
-        </button>
-      )}
+      <button
+        className="realm-nav-btn next-btn"
+        onClick={handleProceedToThrone}
+        aria-label="Proceed to Throne Room"
+      >
+        THE THRONE ↗
+      </button>
     </div>
   )
 }
