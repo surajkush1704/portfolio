@@ -3,7 +3,7 @@
 // PURPOSE: Manage enquiries/scrolls from mortals with real-time Firestore sync
 // ============================================================================
 
-import { collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
+import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from '../../../lib/firebase'
 
@@ -26,25 +26,33 @@ export function AdminLetterBox() {
     if (!import.meta.env.VITE_FIREBASE_API_KEY) return
 
     try {
-      const q = query(collection(db, 'enquiries'), orderBy('timestamp', 'desc'))
+      const colRef = collection(db, 'enquiries')
       const unsubscribe = onSnapshot(
-        q,
+        colRef,
         (snapshot) => {
           if (!snapshot.empty) {
             const fetched = snapshot.docs.map((d) => ({
               id: d.id,
               ...(d.data() as Omit<Enquiry, 'id'>),
             }))
+            // Sort by timestamp descending
+            fetched.sort((a, b) => {
+              const timeA = a.timestamp?.seconds ?? 0
+              const timeB = b.timestamp?.seconds ?? 0
+              return timeB - timeA
+            })
             setEnquiries(fetched)
           } else {
             setEnquiries([])
           }
         },
-        () => {}
+        (err) => {
+          console.warn('Enquiries live listener error:', err)
+        }
       )
       return () => unsubscribe()
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn('Failed to initialize enquiries listener:', err)
     }
   }, [])
 

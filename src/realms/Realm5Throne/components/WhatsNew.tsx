@@ -3,7 +3,7 @@
 // PURPOSE: Read-only live notice board showing latest updates from the Overlord
 // ============================================================================
 
-import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from '../../../lib/firebase'
 
@@ -42,25 +42,25 @@ export function WhatsNew() {
     if (!import.meta.env.VITE_FIREBASE_API_KEY) return
 
     try {
-      const q = query(
-        collection(db, 'notices'),
-        where('active', '==', true),
-        orderBy('order', 'asc')
-      )
-
+      const colRef = collection(db, 'notices')
       const unsubscribe = onSnapshot(
-        q,
+        colRef,
         (snapshot) => {
           if (!snapshot.empty) {
-            const fetched = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...(doc.data() as Omit<Notice, 'id'>),
-            }))
-            setNotices(fetched)
+            const fetched = snapshot.docs
+              .map((doc) => ({
+                id: doc.id,
+                ...(doc.data() as Omit<Notice, 'id'>),
+              }))
+              .filter((n) => n.active !== false)
+              .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            if (fetched.length > 0) {
+              setNotices(fetched)
+            }
           }
         },
-        () => {
-          // Keep default notices on snapshot fallback
+        (err) => {
+          console.warn('WhatsNew dispatches error:', err)
         }
       )
 

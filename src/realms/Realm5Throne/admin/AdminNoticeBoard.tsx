@@ -9,8 +9,6 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  orderBy,
-  query,
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore'
@@ -34,25 +32,28 @@ export function AdminNoticeBoard() {
     if (!import.meta.env.VITE_FIREBASE_API_KEY) return
 
     try {
-      const q = query(collection(db, 'notices'), orderBy('order', 'asc'))
+      const colRef = collection(db, 'notices')
       const unsubscribe = onSnapshot(
-        q,
+        colRef,
         (snapshot) => {
           if (!snapshot.empty) {
             const fetched = snapshot.docs.map((d) => ({
               id: d.id,
               ...(d.data() as Omit<Notice, 'id'>),
             }))
+            fetched.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
             setNotices(fetched)
           } else {
             setNotices([])
           }
         },
-        () => {}
+        (err) => {
+          console.warn('Notice board listener error:', err)
+        }
       )
       return () => unsubscribe()
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn('Failed to initialize notice board listener:', err)
     }
   }, [])
 

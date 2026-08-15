@@ -44,9 +44,28 @@ export function EnquiryForm() {
           read: false,
           sessionId: getSessionId(),
         })
-      } else {
-        // Local simulation delay
-        await new Promise((r) => setTimeout(r, 600))
+      }
+
+      // Dispatch direct email alert to Overlord inbox
+      try {
+        fetch('https://formsubmit.co/ajax/surajkush1704@gmail.com', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            _subject: `⚡ New Mortal Audience Request: ${formData.name.trim()} (${userType || 'Visitor'})`,
+            Name: formData.name.trim(),
+            Company: formData.company.trim() || 'Not Provided',
+            Email: formData.email.trim(),
+            Message: formData.message.trim(),
+            UserType: userType || 'General Visitor',
+            SessionId: getSessionId(),
+          }),
+        }).catch((e) => console.warn('Email dispatch notice:', e))
+      } catch {
+        // Non-blocking
       }
 
       trackEvent('enquiry_submitted', userType ?? 'unknown', {

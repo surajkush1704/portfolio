@@ -3,7 +3,7 @@
 // PURPOSE: Live domain intelligence dashboard tracking visitor behavior & metrics
 // ============================================================================
 
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, onSnapshot, type QuerySnapshot, type DocumentData } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from '../../../lib/firebase'
 
@@ -28,59 +28,106 @@ const DEFAULT_METRICS: AnalyticsSummary = {
 export function AdminAnalytics() {
   const [metrics, setMetrics] = useState<AnalyticsSummary>(DEFAULT_METRICS)
   const [projectStats, setProjectStats] = useState<Array<{ name: string; opens: number }>>([])
-  const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d' | 'all'>('7d')
+  const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d' | 'all'>('all')
 
   useEffect(() => {
     if (!import.meta.env.VITE_FIREBASE_API_KEY) return
 
-    const fetchAnalytics = async () => {
-      try {
-        const snap = await getDocs(collection(db, 'analytics'))
-        if (!snap.empty) {
-          let mortals = 0
-          let recruiters = 0
-          let downloads = 0
-          let oracle = 0
-          let fastTracks = 0
-          const projMap: Record<string, number> = {}
+    let totalEnquiriesCount = 0
 
-          const uniqueSessions = new Set<string>()
+    // 1. Listen to live enquiries collection for scroll count
+    const unsubEnquiries = onSnapshot(
+      collection(db, 'enquiries'),
+      (snap: QuerySnapshot<DocumentData>) => {
+        totalEnquiriesCount = snap.size
+        setMetrics((prev) => ({ ...prev, scrollsReceived: totalEnquiriesCount }))
+      },
+      (err: Error) => console.warn('Analytics enquiries listener error:', err)
+    )
 
-          snap.forEach((doc) => {
-            const data = doc.data()
-            if (data.sessionId) uniqueSessions.add(data.sessionId)
-            if (data.userType === 'recruiter') recruiters += 1
-            if (data.event === 'resume_downloaded') downloads += 1
-            if (data.event === 'ai_interacted') oracle += 1
-            if (data.event === 'fast_track_used' || data.event === 'fast_track_opened') fastTracks += 1
-            if (data.event === 'trophy_inspected' && data.details?.trophyName) {
-              const name = String(data.details.trophyName)
-              projMap[name] = (projMap[name] || 0) + 1
-            }
-          })
-
-          mortals = uniqueSessions.size || snap.size
-
+    // 2. Listen to live analytics events
+    const unsubAnalytics = onSnapshot(
+      collection(db, 'analytics'),
+      (snap: QuerySnapshot<DocumentData>) => {
+        if (snap.empty) {
           setMetrics({
-            mortalsEntered: mortals,
-            recruiters: recruiters,
-            scrollsReceived: 0,
-            codexDownloads: downloads,
-            oracleConsulted: oracle,
-            fastTracksUsed: fastTracks,
+            mortalsEntered: 0,
+            recruiters: 0,
+            scrollsReceived: totalEnquiriesCount,
+            codexDownloads: 0,
+            oracleConsulted: 0,
+            fastTracksUsed: 0,
           })
-
-          const sortedProj = Object.entries(projMap)
-            .map(([name, opens]) => ({ name, opens }))
-            .sort((a, b) => b.opens - a.opens)
-          setProjectStats(sortedProj)
+          setProjectStats([])
+          return
         }
-      } catch (err) {
-        console.warn('Analytics fetch warning:', err)
-      }
-    }
 
-    fetchAnalytics()
+        let recruiters = 0
+        let downloads = 0
+        let oracle = 0
+        let fastTracks = 0
+        const projMap: Record<string, number> = {
+          'Socratiq Engine': 0,
+          'ContractGuard RAG': 0,
+          'CogniCanvas Vision': 0,
+          'PulseGuard IoT': 0,
+          'NeuralForge Studio': 0,
+        }
+
+        const uniqueSessions = new Set<string>()
+        const now = Date.now()
+
+        snap.forEach((d: DocumentData) => {
+          const data = d.data()
+
+          // Filter by time range if timestamp exists
+          if (timeRange !== 'all' && data.timestamp?.seconds) {
+            const eventTime = data.timestamp.seconds * 1000
+            const diffDays = (now - eventTime) / (1000 * 60 * 60 * 24)
+            if (timeRange === 'today' && diffDays > 1) return
+            if (timeRange === '7d' && diffDays > 7) return
+            if (timeRange === '30d' && diffDays > 30) return
+          }
+
+          if (data.sessionId) uniqueSessions.add(data.sessionId)
+          if (data.userType === 'recruiter') recruiters += 1
+          if (data.event === 'resume_downloaded') downloads += 1
+          if (data.event === 'ai_interacted' || data.event === 'chat_message_sent') oracle += 1
+          if (data.event === 'fast_track_used' || data.event === 'fast_track_opened') fastTracks += 1
+          if (data.event === 'enquiry_submitted') totalEnquiriesCount += 1
+
+          const trophy = data.trophyName || data.details?.trophyName || data.name
+          if (trophy) {
+            const name = String(trophy)
+            projMap[name] = (projMap[name] || 0) + 1
+          }
+        })
+
+        const mortals = uniqueSessions.size || snap.size
+
+        setMetrics({
+          mortalsEntered: mortals,
+          recruiters: recruiters,
+          scrollsReceived: totalEnquiriesCount,
+          codexDownloads: downloads,
+          oracleConsulted: oracle,
+          fastTracksUsed: fastTracks,
+        })
+
+        const sortedProj = Object.entries(projMap)
+          .map(([name, opens]) => ({ name, opens }))
+          .sort((a, b) => b.opens - a.opens)
+        setProjectStats(sortedProj)
+      },
+      (err: Error) => {
+        console.warn('Analytics live listener error:', err)
+      }
+    )
+
+    return () => {
+      unsubEnquiries()
+      unsubAnalytics()
+    }
   }, [timeRange])
 
   return (
