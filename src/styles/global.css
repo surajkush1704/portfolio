@@ -138,3 +138,28 @@ img, video, canvas, svg {
     font-size: 8px;
   }
 }
+
+/* Mobile Landscape Optimization (Short Viewport Heights <= 520px) */
+@media (max-height: 520px) {
+  .retreat-btn,
+  .realm-nav-btn {
+    bottom: 8px !important;
+    font-size: 8px !important;
+    padding: 5px 10px !important;
+    letter-spacing: 0.12em !important;
+  }
+  .realm-nav-btn.prev-btn,
+  .retreat-btn {
+    left: 10px !important;
+  }
+  .realm-nav-btn.next-btn {
+    right: 10px !important;
+  }
+  .global-audio-toggle {
+    top: 8px !important;
+    right: 10px !important;
+    padding: 4px 8px !important;
+    font-size: 7.5px !important;
+  }
+}
+

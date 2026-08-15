@@ -784,4 +784,17 @@ const styles = `
   .xal-pose2 { width: 200px; }
   .click-prompt { font-size: 8px; letter-spacing: 0.3em; white-space: normal; text-align: center; width: 90%; }
 }
+@media (max-height: 520px) {
+  .monolith { width: clamp(140px, 20vw, 210px); }
+  .info-box { width: min(480px, 75vw); bottom: 8px; padding: 12px 18px; }
+  .info-header { margin-bottom: 8px; }
+  .info-title { font-size: 11px; }
+  .info-bar { height: 14px; }
+  .info-divider { margin-bottom: 8px; }
+  .info-line { padding: 4px 0; }
+  .info-label { font-size: 9px; min-width: 50px; }
+  .info-value { font-size: 10.5px; line-height: 1.35; }
+  .xal-pose2 { width: clamp(140px, 20vw, 220px); right: 2vw; }
+  .click-prompt { bottom: 18px; font-size: 8px; }
+}
 `

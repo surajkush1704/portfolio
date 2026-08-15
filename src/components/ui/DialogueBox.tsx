@@ -320,6 +320,41 @@ export function DialogueBox({
           .dialogue-box p { font-size: 13px; }
           .dialogue-advance-prompt { font-size: 8px; letter-spacing: 0.18em; }
         }
+        @media (max-height: 520px) {
+          .dialogue-box {
+            padding: 8px 14px !important;
+            box-shadow: 0 0 20px rgba(0,0,0,0.85) !important;
+          }
+          .dialogue-realm0 {
+            right: 26vw !important;
+            bottom: 8px !important;
+            width: clamp(280px, 46vw, 440px) !important;
+            min-height: auto !important;
+          }
+          .dialogue-realm1, .dialogue-realm2 {
+            bottom: 36px !important;
+            left: 12px !important;
+            right: auto !important;
+            max-width: 440px !important;
+            padding: 8px 12px !important;
+          }
+          .dialogue-speaker {
+            margin-bottom: 4px !important;
+            font-size: 9px !important;
+            gap: 6px !important;
+          }
+          .dialogue-bar {
+            height: 12px !important;
+          }
+          .dialogue-box p {
+            font-size: 11.5px !important;
+            line-height: 1.4 !important;
+          }
+          .dialogue-advance-prompt {
+            margin-top: 4px !important;
+            font-size: 7.5px !important;
+          }
+        }
       `}</style>
     </motion.section>
   )

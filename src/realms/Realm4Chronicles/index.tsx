@@ -335,6 +335,23 @@ const GLOBAL_STYLES = `
     }
     .retreat-btn { bottom: 12px; left: 12px; font-size: 8px; padding: 6px 10px; }
   }
+  @media (max-height: 520px) {
+    .ground-arrow { bottom: 4vh !important; }
+    .ground-arrow.left-ground-arrow { left: 8vw !important; }
+    .ground-arrow.right-ground-arrow { right: 8vw !important; }
+    .ground-arrow img { width: clamp(110px, 16vw, 160px) !important; }
+    .xal-r4-container {
+      height: 78vh !important;
+      width: clamp(180px, 24vw, 300px) !important;
+      left: 36% !important;
+      bottom: 0 !important;
+    }
+    .r4-dialogue-wrapper {
+      top: 8px !important;
+      left: 10px !important;
+      max-width: 420px !important;
+    }
+  }
 `
 
 export default function Realm4Chronicles({ onNext, onPrev, initialFinished }: Props) {

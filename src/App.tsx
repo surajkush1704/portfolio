@@ -16,6 +16,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useState } from 'react'
 import { AudioToggle } from './components/ui/AudioToggle'
+import { OrientationPrompt } from './components/ui/OrientationPrompt'
 import FastTrack from './realms/FastTrack'
 import Realm0Gate from './realms/Realm0Gate'
 import Realm1Souls from './realms/Realm1Souls'
@@ -113,6 +114,9 @@ export default function App() {
 
   return (
     <>
+      {/* SECTION: Mobile Portrait Orientation Prompt */}
+      <OrientationPrompt />
+
       {/* SECTION: Top-Right Audio Mute Control (Active in Realm 0) */}
       {realm === 0 && <AudioToggle />}
 

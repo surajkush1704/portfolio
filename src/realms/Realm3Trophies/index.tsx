@@ -1016,6 +1016,30 @@ const GLOBAL_STYLES = `
     .gesture-hint { bottom: 14px; }
     .gesture-hint p { font-size: 9px; letter-spacing: 0.15em; }
   }
+  @media (max-height: 520px) {
+    .summary-box {
+      top: 8px !important;
+      left: 10px !important;
+      right: auto !important;
+      width: min(340px, 45vw) !important;
+      max-height: 82vh !important;
+      padding: 10px 14px !important;
+    }
+    .info-name { font-size: 11px !important; }
+    .info-tagline { font-size: 9px !important; margin-bottom: 6px !important; }
+    .info-divider { margin: 6px 0 !important; }
+    .info-section-label { font-size: 8px !important; margin-bottom: 2px !important; }
+    .info-text { font-size: 10px !important; line-height: 1.35 !important; }
+    .xal-intro, .xal-complete {
+      width: clamp(140px, 20vw, 220px) !important;
+      max-height: 85vh !important;
+      right: 2vw !important;
+    }
+    .modal-content {
+      padding: 14px 18px !important;
+      max-height: 90vh !important;
+    }
+  }
 `
 
 export default function Realm3Trophies({ onNext, onPrev, initialFinished }: Props) {

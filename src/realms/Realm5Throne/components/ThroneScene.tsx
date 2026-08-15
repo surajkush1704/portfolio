@@ -491,16 +491,12 @@ export function ThroneScene({ onReturnToGate, onPrevRealm }: ThroneSceneProps) {
             gap: 8px;
             padding: 8px;
           }
-          .throne-icon-btn {
-            min-width: 78px;
-            padding: 6px;
-          }
           .dock-icon-img {
-            width: 28px;
-            height: 28px;
+            width: 38px;
+            height: 38px;
           }
-          .dock-icon-title { font-size: 8px; }
-          .dock-icon-sub { font-size: 7px; }
+          .dock-icon-title { font-size: 9px; }
+          .dock-icon-sub { font-size: 8px; }
           .throne-leave-btn {
             bottom: 16px;
             right: 16px;
@@ -510,6 +506,56 @@ export function ThroneScene({ onReturnToGate, onPrevRealm }: ThroneSceneProps) {
           .throne-prev-btn {
             bottom: 16px;
             left: 16px;
+          }
+        }
+        @media (max-height: 520px) {
+          .throne-title-banner {
+            top: 8px !important;
+            right: 10px !important;
+            padding: 4px 10px !important;
+          }
+          .throne-realm-tag { font-size: 7px !important; }
+          .throne-realm-title { font-size: 11px !important; }
+          .xal-throne-pose8 {
+            max-height: 75vh !important;
+            width: clamp(140px, 20vw, 220px) !important;
+            right: 1vw !important;
+            opacity: 0.8 !important;
+          }
+          .throne-dock-container {
+            bottom: 8px !important;
+            left: 45% !important;
+            transform: translateX(-50%) !important;
+            max-width: 65vw !important;
+            width: auto !important;
+          }
+          .throne-dock {
+            gap: clamp(10px, 2vw, 22px) !important;
+            padding: 0 !important;
+          }
+          .dock-icon-img {
+            width: clamp(38px, 4.5vw, 50px) !important;
+            height: clamp(38px, 4.5vw, 50px) !important;
+            margin-bottom: 3px !important;
+          }
+          .dock-icon-title { font-size: 9.5px !important; }
+          .dock-icon-sub { font-size: 8px !important; margin-top: 1px !important; }
+          .throne-leave-btn {
+            bottom: 8px !important;
+            right: 10px !important;
+            font-size: 8.5px !important;
+            padding: 6px 12px !important;
+          }
+          .throne-prev-btn {
+            bottom: 8px !important;
+            left: 10px !important;
+            font-size: 8.5px !important;
+            padding: 6px 12px !important;
+          }
+          .throne-modal-content {
+            padding: 14px 18px !important;
+            max-height: 88vh !important;
+            width: min(700px, 94vw) !important;
           }
         }
       `}</style>

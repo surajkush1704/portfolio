@@ -412,21 +412,61 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
             gap: 8px;
             padding: 8px;
           }
-          .admin-icon-btn {
-            min-width: 85px;
-            padding: 6px;
-          }
           .dock-icon-img {
-            width: 28px;
-            height: 28px;
+            width: 38px;
+            height: 38px;
           }
-          .dock-icon-title { font-size: 8px; }
-          .dock-icon-sub { font-size: 7px; }
+          .dock-icon-title { font-size: 9px; }
+          .dock-icon-sub { font-size: 8px; }
           .admin-exit-btn {
             bottom: 14px;
-            right: 14px;
+            left: 14px;
             font-size: 8.5px;
             padding: 8px 12px;
+          }
+        }
+        @media (max-height: 520px) {
+          .admin-title-banner {
+            top: 8px !important;
+            right: 10px !important;
+            padding: 4px 10px !important;
+          }
+          .admin-realm-tag { font-size: 7px !important; }
+          .admin-realm-title { font-size: 11px !important; }
+          .admin-xal-kneeling, .admin-xal-pose8 {
+            max-height: 75vh !important;
+            width: clamp(140px, 20vw, 220px) !important;
+            right: 1vw !important;
+            opacity: 0.8 !important;
+          }
+          .admin-dock-container {
+            bottom: 8px !important;
+            left: 45% !important;
+            transform: translateX(-50%) !important;
+            max-width: 65vw !important;
+            width: auto !important;
+          }
+          .admin-dock {
+            gap: clamp(12px, 2.5vw, 26px) !important;
+            padding: 0 !important;
+          }
+          .dock-icon-img {
+            width: clamp(38px, 4.5vw, 50px) !important;
+            height: clamp(38px, 4.5vw, 50px) !important;
+            margin-bottom: 3px !important;
+          }
+          .dock-icon-title { font-size: 9.5px !important; }
+          .dock-icon-sub { font-size: 8px !important; margin-top: 1px !important; }
+          .admin-exit-btn {
+            bottom: 8px !important;
+            left: 10px !important;
+            font-size: 8.5px !important;
+            padding: 6px 12px !important;
+          }
+          .admin-modal-content {
+            padding: 14px 18px !important;
+            max-height: 88vh !important;
+            width: min(720px, 94vw) !important;
           }
         }
       `}</style>

@@ -19,6 +19,21 @@ export const getSessionId = (): string => {
   }
 }
 
+// Detect device type
+const getDeviceType = (): string => {
+  try {
+    const hasTouch =
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia('(pointer: coarse)').matches
+    const ua = navigator.userAgent.toLowerCase()
+    const isMobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua)
+    return hasTouch || isMobileUA ? 'mobile' : 'desktop'
+  } catch {
+    return 'desktop'
+  }
+}
+
 // Track any analytics event into Firestore 'analytics' collection
 export const trackEvent = async (
   event: string,
@@ -26,15 +41,17 @@ export const trackEvent = async (
   extra?: Record<string, unknown>
 ) => {
   try {
+    const device = getDeviceType()
     if (!import.meta.env.VITE_FIREBASE_API_KEY) {
       // Local dev mode without Firebase credentials — log to console
-      console.log('[Analytics Event]:', { event, userType, ...extra })
+      console.log('[Analytics Event]:', { event, userType, device, ...extra })
       return
     }
     await addDoc(collection(db, 'analytics'), {
       event,
       userType: userType || 'unknown',
       sessionId: getSessionId(),
+      device,
       timestamp: serverTimestamp(),
       ...extra,
     })

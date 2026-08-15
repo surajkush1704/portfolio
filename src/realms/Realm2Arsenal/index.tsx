@@ -1365,4 +1365,26 @@ const realm2Styles = `
   .r2-xal-img { width: 180px; }
   .r2-props-middle-section { top: 30vh; bottom: 28vh; }
 }
+
+@media (max-height: 520px) {
+  .r2-left-info-panel {
+    position: absolute !important;
+    left: 10px !important;
+    top: 8px !important;
+    width: clamp(240px, 34vw, 340px) !important;
+    max-height: 86vh !important;
+    padding: 10px 12px !important;
+    overflow-y: auto !important;
+  }
+  .r2-weapon-name { font-size: 13px !important; }
+  .r2-desc-p { font-size: 10px !important; line-height: 1.35 !important; }
+  .r2-props-middle-section {
+    top: 10vh !important;
+    bottom: 12vh !important;
+    left: 36vw !important;
+    right: 24vw !important;
+  }
+  .r2-xal-wrap { right: 1vw !important; }
+  .r2-xal-img { width: clamp(140px, 20vw, 220px) !important; max-height: 85vh !important; }
+}
 `
