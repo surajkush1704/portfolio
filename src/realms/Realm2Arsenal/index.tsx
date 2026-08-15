@@ -1,15 +1,25 @@
+// ============================================================================
+// REALM 2: THE ARSENAL
+// PURPOSE: Third realm showcasing Suraj Kumar's 10 technical weapons / core skills.
+// FEATURES:
+//   - Dual wall weapon racks (Left: AI & Architecture, Right: Fullstack & Systems)
+//   - Interactive weapon examination with deep technical specs and Xal quotes
+//   - Milestone praise dialogue on 5th and 10th weapon examined
+//   - Unified navigation buttons (← HALL OF SOULS, TROPHY HALL ↗)
+// ============================================================================
+
 import { AnimatePresence, motion } from 'framer-motion'
 import gsap from 'gsap'
 import { Howl } from 'howler'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DialogueBox } from '../../components/ui/DialogueBox'
 import type { DialogueState } from '../../components/ui/DialogueBox'
-import { NavigationArrow } from '../../components/ui/NavigationArrow'
 import { ParticleScene } from '../../components/three/ParticleScene'
 
 interface Props {
   onNext: () => void
   onPrev: () => void
+  initialFinished?: boolean
 }
 
 export type WeaponData = {
@@ -26,6 +36,9 @@ export type WeaponData = {
   xalClosing: string
 }
 
+// ----------------------------------------------------------------------------
+// 10 WEAPONS OF MASTERY (5 Left Wall, 5 Right Wall)
+// ----------------------------------------------------------------------------
 export const WEAPONS: WeaponData[] = [
   // ── LEFT WEAPONS ──────────────────────────────────────────
   {
@@ -447,7 +460,6 @@ export default function Realm2Arsenal({ onNext, onPrev, initialFinished }: Props
   const [introStep, setIntroStep] = useState<number>(1)
   const [examinedCount, setExaminedCount] = useState<number>(0)
   const [navVisible, setNavVisible] = useState<boolean>(false)
-  const [pulseRightArrow, setPulseRightArrow] = useState<boolean>(false)
   const [xalVisible, setXalVisible] = useState<boolean>(false)
   const [mobile, setMobile] = useState<boolean>(window.innerWidth < 768)
   const [parallax, setParallax] = useState({ x: 0, y: 0 })
@@ -548,8 +560,6 @@ export default function Realm2Arsenal({ onNext, onPrev, initialFinished }: Props
 
         if (newCount === 5) {
           playSound('milestone')
-          setPulseRightArrow(true)
-          addTimeout(() => setPulseRightArrow(false), 2000)
           setDialogueState('narration')
           setDialogueText(PRAISE_5_TEXT)
         } else if (newCount === 10) {
@@ -867,21 +877,24 @@ export default function Realm2Arsenal({ onNext, onPrev, initialFinished }: Props
         </span>
       </div>
 
-      {/* Layer 9 — Navigation Arrows (Visible at >= 1 examined) */}
-      <NavigationArrow
-        direction="left"
+      {/* Layer 9 — Navigation Controls (Unified Button Style) */}
+      <button
+        className="realm-nav-btn prev-btn"
         onClick={handlePrevRealm}
-        visible={navVisible}
-        label="HALL OF SOULS"
-      />
-      <NavigationArrow
-        direction="right"
-        onClick={handleNextRealm}
-        visible={navVisible}
-        label="TROPHY HALL"
-      />
+        aria-label="Return to Hall of Souls"
+      >
+        ← HALL OF SOULS
+      </button>
 
-      {pulseRightArrow && <div className="r2-arrow-pulse-glow" />}
+      {navVisible && (
+        <button
+          className="realm-nav-btn next-btn"
+          onClick={handleNextRealm}
+          aria-label="Proceed to Trophy Hall"
+        >
+          TROPHY HALL ↗
+        </button>
+      )}
     </div>
   )
 }

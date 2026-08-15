@@ -1,10 +1,20 @@
+// ============================================================================
+// REALM 1: HALL OF SOULS
+// PURPOSE: Second realm where visitor encounters the glowing Monolith of Truth,
+//          revealing Suraj Kumar's persona, GenAI background, and credentials.
+// FEATURES:
+//   - Dramatic screen-shake entrance sequence
+//   - Xal'Vorith introductory monologue & Monolith guidance
+//   - Interactive 3D Monolith artifact with inspection card
+//   - Unified navigation buttons (← THE GATE, THE ARSENAL ↗)
+// ============================================================================
+
 import { AnimatePresence, motion } from 'framer-motion'
 import gsap from 'gsap'
 import { Howl } from 'howler'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DialogueBox } from '../../components/ui/DialogueBox'
 import type { DialogueState } from '../../components/ui/DialogueBox'
-import { NavigationArrow } from '../../components/ui/NavigationArrow'
 import { ParticleScene } from '../../components/three/ParticleScene'
 
 interface Props {
@@ -16,6 +26,9 @@ interface Props {
 type Phase = 'arrival' | 'shake' | 'transition' | 'monolith' | 'dialogue' | 'interactive'
 type SoundKey = 'hall' | 'rumble' | 'bgTransition' | 'monolithAppear' | 'monolithIdle' | 'infoReveal' | 'soulDust' | 'nav'
 
+// ----------------------------------------------------------------------------
+// DIALOGUE SCRIPTS & MONOLITH PROFILE DATA
+// ----------------------------------------------------------------------------
 const DIALOGUE_1 =
   "I have served warlords. Advised fallen gods. Counselled the architects of apocalypse. None of them — not one — built the way The Overlord builds. He emerged from a place mortals call Pondicherry University, wielding nothing but curiosity and an unreasonable refusal to stop. That was enough. It was more than enough."
 
@@ -27,13 +40,9 @@ const RESPONSE =
 
 const INFO_LINES = [
   { label: 'NAME', value: 'Suraj Kumar' },
-  { label: 'TITLE', value: 'Architect of GenAI // MCA Final Year' },
-  { label: 'ORIGIN', value: 'Pondicherry University — May 2026' },
-  { label: 'DOMAIN', value: 'GenAI Engineering // AI Product Building' },
-  { label: 'NATURE', value: 'AI-Native Builder // Vibe Coder' },
-  { label: 'STATUS', value: 'Available for Remote Dominion — Immediately', special: 'status' as const },
-  { label: 'TRIBUTE', value: '₹40,000/month' },
-  { label: 'CONTACT', value: 'surajkush1704@gmail.com', special: 'contact' as const },
+  { label: 'ORIGIN', value: 'Pondicherry University' },
+  { label: 'DOMAIN', value: 'AI Product Manager & GenAI Engineering, Rapid Prototyping and Deployment' },
+  { label: 'STATUS', value: 'Available Immediately', special: 'status' as const },
 ]
 
 const audioMap: Record<SoundKey, { file: string; loop?: boolean; volume: number }> = {
@@ -77,7 +86,6 @@ export default function Realm1Souls({ onNext, onPrev: _onPrev, initialFinished }
   const [bg2Visible, setBg2Visible] = useState(false)
   const [monolithVisible, setMonolithVisible] = useState(false)
   const [xalVisible, setXalVisible] = useState(false)
-  const [showPrompt, setShowPrompt] = useState(false)
   const [dialogueText, setDialogueText] = useState('')
   const [dialogueState, setDialogueState] = useState<DialogueState>('idle')
   const [dialogueVisible, setDialogueVisible] = useState(false)
@@ -192,7 +200,6 @@ export default function Realm1Souls({ onNext, onPrev: _onPrev, initialFinished }
   const triggerPhaseB = useCallback(() => {
     if (triggeredRef.current || phaseRef.current !== 'arrival') return
     triggeredRef.current = true
-    setShowPrompt(false)
     setPhase('shake')
     runShake()
   }, [runShake])
@@ -244,7 +251,6 @@ export default function Realm1Souls({ onNext, onPrev: _onPrev, initialFinished }
     play('soulDust')
     gsap.to({}, { duration: 0, onComplete: () => setBg1Opacity(1) })
     gsap.fromTo(bg1Ref.current, { opacity: 0 }, { opacity: 1, duration: 1.2 })
-    addTimeout(() => setShowPrompt(true), 1200)
 
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return
@@ -421,41 +427,34 @@ export default function Realm1Souls({ onNext, onPrev: _onPrev, initialFinished }
                     <span className="status-dot" />
                     {line.value}
                   </span>
-                ) : line.special === 'contact' ? (
-                  <a className="info-value contact-value" href={`mailto:${line.value}`}>{line.value}</a>
                 ) : (
                   <span className="info-value">{line.value}</span>
                 )}
               </motion.div>
             ))}
-            <div className="info-footer">
-              <button className="info-link" onClick={() => window.open('https://github.com/surajkush1704', '_blank')}>
-                github.com/surajkush1704
-              </button>
-              <button className="info-link" onClick={() => window.open('https://linkedin.com/in/surajkumar1704', '_blank')}>
-                linkedin.com/in/surajkumar1704
-              </button>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Layer 9 — Nav arrow */}
-      <NavigationArrow direction="right" onClick={handleNext} visible={navArrowVisible} label="NEXT REALM" />
+      {/* Return to The Gate (Realm 0) button */}
+      <button
+        className="realm-nav-btn prev-btn"
+        onClick={_onPrev}
+        aria-label="Return to The Gate"
+      >
+        ← THE GATE
+      </button>
 
-      {/* Layer 10 — Click prompt */}
-      <AnimatePresence>
-        {showPrompt && (
-          <motion.p
-            className="click-prompt"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            [ CLICK ANYWHERE OR PRESS ANY KEY TO CONTINUE ]
-          </motion.p>
-        )}
-      </AnimatePresence>
+      {/* Proceed to The Arsenal (Realm 2) button */}
+      {navArrowVisible && (
+        <button
+          className="realm-nav-btn next-btn"
+          onClick={handleNext}
+          aria-label="Proceed to The Arsenal"
+        >
+          THE ARSENAL ↗
+        </button>
+      )}
     </div>
   )
 }

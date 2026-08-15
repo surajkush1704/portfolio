@@ -1,14 +1,30 @@
+// ============================================================================
+// REALM 3: TROPHY HALL (THE 5 KINGDOM PILLARS)
+// PURPOSE: Fourth realm featuring an interactive lava crossing across 5 pillars,
+//          each representing one of Suraj Kumar's flagship projects.
+//
+// STATE & POSE RULES:
+//   - Step 0: Intro monologue with Xal'Vorith pose 4 (xalvorith-pose4.png).
+//   - Steps 1-5: Lava hopping crossing across 5 pillars. Xal'Vorith is invisible.
+//   - Step 6 (Arrival): Door opens, congratulatory praise sequence begins.
+//       * During praise monologue: Xal'Vorith uses pose 5 (xalvorith-pose5.png).
+//       * On guide invitation: Transitions to pose 6 (xalvorith-pose6.png).
+//       * AFTER dialogue ends: Pose 6 STAYS PERMANENTLY STANDING on screen.
+//   - Backward Navigation (initialFinished = true):
+//       * Mounts directly on Step 6 with pose 6 standing permanently and nav active.
+// ============================================================================
+
 import { AnimatePresence, motion } from 'framer-motion'
 import gsap from 'gsap'
 import { Howl } from 'howler'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DialogueBox, type DialogueState } from '../../components/ui/DialogueBox'
-import { NavigationArrow } from '../../components/ui/NavigationArrow'
 import { ParticleScene } from '../../components/three/ParticleScene'
 
 interface Props {
   onNext: () => void
   onPrev: () => void
+  initialFinished?: boolean
 }
 
 interface PillarData {
@@ -41,6 +57,7 @@ type RealmPhase =
   | 'complete'
   | 'praise'
   | 'guide'
+  | 'done'
 
 type CurrentStep = 0 | 1 | 2 | 3 | 4 | 5 | 6
 type XalPose = 'none' | 'pose4' | 'pose5' | 'pose6'
@@ -1001,7 +1018,7 @@ const GLOBAL_STYLES = `
   }
 `
 
-export default function Realm3Trophies({ onNext, onPrev }: Props) {
+export default function Realm3Trophies({ onNext, onPrev, initialFinished }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const bg1Ref = useRef<HTMLDivElement>(null)
   const flashRef = useRef<HTMLDivElement>(null)
@@ -1014,23 +1031,23 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
   const rafRef = useRef<number>(0)
   const timeouts = useRef<number[]>([])
   const sounds = useRef<Partial<Record<SoundKey, Howl>>>({})
-  const phaseRef = useRef<RealmPhase>('intro')
+  const phaseRef = useRef<RealmPhase>(initialFinished ? 'guide' : 'intro')
   const parallaxActive = useRef(true)
 
-  const [phase, setPhase] = useState<RealmPhase>('intro')
-  const [currentStep, setCurrentStep] = useState<CurrentStep>(0)
+  const [phase, setPhase] = useState<RealmPhase>(initialFinished ? 'guide' : 'intro')
+  const [currentStep, setCurrentStep] = useState<CurrentStep>(initialFinished ? 6 : 0)
   const [fullModalOpen, setFullModalOpen] = useState(false)
   const [isHopping, setIsHopping] = useState(false)
-  const [navVisible, setNavVisible] = useState(false)
-  const [xalPose, setXalPose] = useState<XalPose>('none')
+  const [navVisible, setNavVisible] = useState(initialFinished ? true : false)
+  const [xalPose, setXalPose] = useState<XalPose>(initialFinished ? 'pose6' : 'none')
   const [dialogueText, setDialogueText] = useState('')
   const [dialogueState, setDialogueState] = useState<DialogueState>('idle')
   const [dialogueVisible, setDialogueVisible] = useState(false)
   const [mobile, setMobile] = useState(window.innerWidth < 768)
   const [parallax, setParallax] = useState({ x: 0, y: 0 })
-  const [introLineIndex, setIntroLineIndex] = useState(0)
-  const [praiseLineIndex, setPraiseLineIndex] = useState(0)
-  const [guideLineIndex, setGuideLineIndex] = useState(0)
+  const [, setIntroLineIndex] = useState(0)
+  const [, setPraiseLineIndex] = useState(0)
+  const [, setGuideLineIndex] = useState(0)
 
   phaseRef.current = phase
 
@@ -1097,7 +1114,8 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
     tl.add(() => {
       play('heatFlash')
       bg.style.backgroundImage = `url(${BACKGROUNDS[toStep]})`
-      bg.style.backgroundSize = toStep === 6 ? 'contain' : 'cover'
+      bg.style.backgroundSize = 'cover'
+      bg.style.backgroundPosition = 'center top'
     }, `-=0.08`)
 
     tl.to(container, { y: 4, duration: 0.15, ease: 'power2.in' })
@@ -1155,13 +1173,73 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
     runHopAnimation('back', currentStep, currentStep - 1)
   }, [isHopping, fullModalOpen, currentStep, runHopAnimation])
 
+  const advanceIntroDialogue = useCallback(() => {
+    setIntroLineIndex(prev => {
+      const next = prev + 1
+      if (next >= INTRO_LINES.length) {
+        setDialogueVisible(false)
+        setXalPose('none')
+        setPhase('crossing')
+        return prev
+      }
+      setDialogueText(INTRO_LINES[next])
+      return next
+    })
+  }, [])
+
+  const advancePraiseDialogue = useCallback(() => {
+    setPraiseLineIndex(prev => {
+      const next = prev + 1
+      if (next >= PRAISE_LINES.length) {
+        setXalPose('pose6')
+        setPhase('guide')
+        setGuideLineIndex(0)
+        setDialogueText(GUIDE_LINES[0])
+        return prev
+      }
+      setXalPose('pose5')
+      setDialogueText(PRAISE_LINES[next])
+      return next
+    })
+  }, [])
+
+  const advanceGuideDialogue = useCallback(() => {
+    setGuideLineIndex(prev => {
+      const next = prev + 1
+      if (next >= GUIDE_LINES.length) {
+        setDialogueVisible(false)
+        setNavVisible(true)
+        setXalPose('pose6')
+        setPhase('done') // Prevents dialogue loop
+        return prev
+      }
+      setXalPose('pose6')
+      setDialogueText(GUIDE_LINES[next])
+      return next
+    })
+  }, [])
+
+  const handleDialogueAdvance = useCallback(() => {
+    if (phase === 'intro') advanceIntroDialogue()
+    else if (phase === 'praise') advancePraiseDialogue()
+    else if (phase === 'guide') advanceGuideDialogue()
+  }, [phase, advanceIntroDialogue, advancePraiseDialogue, advanceGuideDialogue])
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
     if (e.key === 'Escape' && fullModalOpen) {
       setFullModalOpen(false)
       return
     }
-    if (phase === 'intro' || phase === 'praise' || phase === 'guide') return
+    if (phase === 'intro' || phase === 'praise' || phase === 'guide') {
+      if (dialogueVisible) {
+        if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault()
+          handleDialogueAdvance()
+        }
+      }
+      return
+    }
     if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
       e.preventDefault()
       handleHopForward()
@@ -1169,7 +1247,7 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
       e.preventDefault()
       handleHopBack()
     }
-  }, [phase, fullModalOpen, handleHopForward, handleHopBack])
+  }, [phase, dialogueVisible, fullModalOpen, handleDialogueAdvance, handleHopForward, handleHopBack])
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (fullModalOpen) return
@@ -1205,75 +1283,20 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
     }
   }, [phase, fullModalOpen, handleHopForward, handleHopBack])
 
-  const advanceIntroDialogue = useCallback(() => {
-    if (introLineIndex >= INTRO_LINES.length - 1) {
-      setDialogueVisible(false)
-      addTimeout(() => {
-        setXalPose('none')
-        setPhase('crossing')
-      }, 1200)
-      return
-    }
-    setIntroLineIndex(i => i + 1)
-    addTimeout(() => {
-      setDialogueText(INTRO_LINES[introLineIndex + 1])
-    }, introLineIndex === 0 ? 2000 : introLineIndex === 1 ? 1500 : 800)
-  }, [introLineIndex, addTimeout])
-
-  const advancePraiseDialogue = useCallback(() => {
-    const nextIndex = praiseLineIndex + 1
-
-    if (nextIndex >= PRAISE_LINES.length) {
-      const t1 = window.setTimeout(() => {
-        setXalPose('none')
-        const t2 = window.setTimeout(() => {
-          setXalPose('pose6')
-          const t3 = window.setTimeout(() => {
-            setGuideLineIndex(0)
-            setDialogueText(GUIDE_LINES[0])
-            setPhase('guide')
-          }, 700)
-          timeouts.current.push(t3)
-        }, 400)
-        timeouts.current.push(t2)
-      }, 1500)
-      timeouts.current.push(t1)
-      return
-    }
-
-    setPraiseLineIndex(nextIndex)
-    const pauseDurations = [1500, 1200, 1000, 800, 800]
-    const pauseMs = pauseDurations[praiseLineIndex] ?? 800
-
-    const t = window.setTimeout(() => {
-      setDialogueText(PRAISE_LINES[nextIndex])
-    }, pauseMs)
-    timeouts.current.push(t)
-  }, [praiseLineIndex])
-
-  const advanceGuideDialogue = useCallback(() => {
-    if (guideLineIndex >= GUIDE_LINES.length - 1) {
-      addTimeout(() => {
-        setNavVisible(true)
-      }, 800)
-      return
-    }
-    setGuideLineIndex(i => i + 1)
-    addTimeout(() => {
-      setDialogueText(GUIDE_LINES[guideLineIndex + 1])
-    }, 800)
-  }, [guideLineIndex, addTimeout])
-
-  const handleDialogueComplete = useCallback(() => {
-    if (phase === 'intro') advanceIntroDialogue()
-    else if (phase === 'praise') advancePraiseDialogue()
-    else if (phase === 'guide') advanceGuideDialogue()
-  }, [phase, advanceIntroDialogue, advancePraiseDialogue, advanceGuideDialogue])
-
   useEffect(() => {
     preloadBackgrounds()
 
     play('lavaAmbient')
+
+    if (initialFinished) {
+      setCurrentStep(6)
+      setPhase('guide')
+      setNavVisible(true)
+      setXalPose('pose6')
+      setDialogueVisible(false)
+      return
+    }
+
     play('xalIntro')
 
     gsap.fromTo(bg1Ref.current, { opacity: 0 }, { opacity: 1, duration: 0.8 })
@@ -1296,7 +1319,7 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
       window.removeEventListener('mousemove', handleMouseMove)
       Object.values(sounds.current).forEach(s => s?.stop())
     }
-  }, [preloadBackgrounds, play, fadeAllAudio, addTimeout, handleKeyDown])
+  }, [initialFinished, preloadBackgrounds, play, fadeAllAudio, addTimeout, handleKeyDown])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
@@ -1356,6 +1379,7 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
     timeouts.current.push(t1)
 
     const t3 = window.setTimeout(() => {
+      setXalPose('pose5')
       setDialogueVisible(true)
       setDialogueState('narration')
       setDialogueText(PRAISE_LINES[0])
@@ -1363,7 +1387,14 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
       setPhase('praise')
     }, 1600)
     timeouts.current.push(t3)
-  }, [phase])
+  }, [phase, play])
+
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.realm-nav-btn') || (e.target as HTMLElement).closest('.modal-content')) return
+    if ((phase === 'intro' || phase === 'praise' || phase === 'guide') && dialogueVisible) {
+      handleDialogueAdvance()
+    }
+  }, [phase, dialogueVisible, handleDialogueAdvance])
 
   const bgTransform = mobile ? undefined : {
     transform: `translate(${parallax.x * -8}px, ${parallax.y * -6}px)`,
@@ -1397,6 +1428,7 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
       className="realm3"
       data-phase={phase}
       data-step={currentStep}
+      onClick={handleContainerClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -1408,8 +1440,9 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
         className="r3-bg"
         style={{
           backgroundImage: `url(${BACKGROUNDS[currentStep]})`,
-          backgroundSize: currentStep === 6 ? 'contain' : 'cover',
-          backgroundPosition: 'center center',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
+          backgroundRepeat: 'no-repeat',
           ...bgTransform,
         }}
       />
@@ -1423,9 +1456,9 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
       {/* Layer 3 — Hop Flash Overlay */}
       <div ref={flashRef} className="hop-flash" />
 
-      {/* Layer 4 — Xal'Vorith Intro (pose4) */}
+      {/* Layer 4 — Xal'Vorith Intro (pose4) — ONLY on step 0 */}
       <AnimatePresence mode="wait">
-        {xalPose === 'pose4' && (
+        {xalPose === 'pose4' && currentStep === 0 && (
           <motion.img
             ref={xalIntroRef}
             className="xal-intro"
@@ -1743,32 +1776,31 @@ export default function Realm3Trophies({ onNext, onPrev }: Props) {
           text={dialogueText}
           state={dialogueState}
           visible={dialogueVisible}
-          onTypeComplete={handleDialogueComplete}
-          onSkip={handleDialogueComplete}
+          onSkip={handleDialogueAdvance}
+          hintText="[ CLICK ANYWHERE OR PRESS ANY KEY TO CONTINUE ]"
           variant="realm1"
-          typewriterSpeed={33}
+          typewriterSpeed={28}
         />
       )}
 
-      {/* Layer 11 — Navigation Arrows (guide phase only) */}
-      <AnimatePresence>
-        {navVisible && (
-          <>
-            <NavigationArrow
-              direction="left"
-              onClick={handlePrev}
-              visible={true}
-              label="THE ARSENAL"
-            />
-            <NavigationArrow
-              direction="right"
-              onClick={handleNext}
-              visible={true}
-              label="THE CHRONICLES"
-            />
-          </>
-        )}
-      </AnimatePresence>
+      {/* Layer 11 — Navigation Controls (Unified Button Style) */}
+      <button
+        className="realm-nav-btn prev-btn"
+        onClick={handlePrev}
+        aria-label="Return to The Arsenal"
+      >
+        ← THE ARSENAL
+      </button>
+
+      {navVisible && (
+        <button
+          className="realm-nav-btn next-btn"
+          onClick={handleNext}
+          aria-label="Proceed to The Chronicles"
+        >
+          THE CHRONICLES ↗
+        </button>
+      )}
     </div>
   )
 }

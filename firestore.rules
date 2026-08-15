@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to verify admin email
+    function isAdmin() {
+      return request.auth != null && 
+        (request.auth.token.email == 'surajkush1704@gmail.com' || request.auth.token.email == 'raj17bittu@gmail.com');
+    }
+
+    // ADMIN ONLY collections
+    match /adminSessions/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    match /analytics/{doc} {
+      // Anyone can write analytics events (tracking visitors)
+      // Only admin can read
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /enquiries/{doc} {
+      // Anyone can CREATE an enquiry (submit form)
+      // Only admin can READ, UPDATE (mark read), DELETE
+      allow create: if 
+        request.resource.data.keys().hasAll([
+          'name', 'email', 'message', 'timestamp'
+        ]) &&
+        request.resource.data.name is string &&
+        request.resource.data.email is string &&
+        request.resource.data.message is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() < 200 &&
+        request.resource.data.email.size() > 0 &&
+        request.resource.data.email.size() < 200 &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.message.size() < 5000;
+      
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /notices/{doc} {
+      // Anyone can READ active notices
+      // Only admin can CREATE, UPDATE, DELETE
+      allow read: if resource.data.active == true;
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // Rate limiting collection for chatbot
+    match /rateLimits/{sessionId} {
+      allow read, write: if true;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
