@@ -101,58 +101,6 @@ graph TD
 * **Orientation Prompt**: Automatically prompts mobile portrait visitors with an animated rune guide to rotate to **Landscape Mode** for an optimal cinematic experience.
 * **Adaptive Height Layouts (`@media (max-height: 520px)`)**: Clamped character scaling, docked floating menus, and compact dialogue boxes engineered specifically for mobile landscape aspect ratios.
 
----
-
-## 🛠️ Local Development & Setup
-
-### Prerequisites
-* **Node.js**: v18.0.0 or higher
-* **npm**: v9.0.0 or higher
-* **Firebase CLI**: `npm install -g firebase-tools` (optional, for deployments)
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/surajkush1704/portfolio.git
-cd portfolio
-```
-
-### 2. Install Dependencies
-```bash
-npm install
-```
-
-### 3. Configure Environment Variables
-Create a `.env` file in the root directory:
-```env
-# Firebase Configuration
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-
-# NVIDIA NIM API (For AI Oracle)
-VITE_NVIDIA_API_KEY=your_nvidia_api_key
-```
-
-### 4. Run Development Server
-```bash
-npm run dev
-```
-Open `http://localhost:5173` in your browser.
-
-### 5. Build for Production
-```bash
-npm run build
-```
-
-### 6. Deploy to Firebase
-```bash
-firebase deploy --only "hosting,firestore:rules"
-```
-
----
 
 ## 🔒 Security & Guardrails
 
